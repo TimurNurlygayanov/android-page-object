@@ -11,4 +11,4 @@ class MyApp(App):
     slow_motion_checkbox = Element('id', 'slow_motion')
     button1 = Element('id', 'btn_1')
 
-    pass
+    my_elements = Element('id', 'new_id', many_elements=True)

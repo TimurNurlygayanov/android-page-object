@@ -4,13 +4,15 @@
 
 class Element():
     _locator = ('', '')
+    _many_elements = False
     _driver = None
     _wait_after_click = False
 
-    def __init__(self, locator_type, locator_str):
+    def __init__(self, locator_type, locator_str, many_elements=False):
+        self._many_elements = many_elements
         self._locator = (locator_type, locator_str)
 
-    def find(self, many=False):
+    def find(self):
         result = None
 
         try:
@@ -23,7 +25,7 @@ class Element():
                     locator = '{0}:id/' + self._locator[1]
                     locator = locator.format(app_name)
 
-                if many_elements:
+                if self._many_elements:
                     result = self._driver.find_elements_by_id(locator)
                 else:
                     result = self._driver.find_element_by_id(locator)
