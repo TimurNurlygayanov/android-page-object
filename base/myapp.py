@@ -3,6 +3,7 @@
 
 from base.app import App
 from base.elements import Element
+from base.elements import ManyElement
 
 
 class MyApp(App):
@@ -11,4 +12,4 @@ class MyApp(App):
     slow_motion_checkbox = Element('id', 'slow_motion')
     button1 = Element('id', 'btn_1')
 
-    my_elements = Element('id', 'new_id', many_elements=True)
+    my_elements = ManyElement('id', 'new_id')
