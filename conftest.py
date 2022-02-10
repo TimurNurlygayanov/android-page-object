@@ -33,29 +33,29 @@ def pytest_runtest_makereport(item, call):
 def android(request):
     platform_name = get('PLATFORM_NAME', 'Android')
     platform_version = get('PLATFORM_VERSION', '10.0')
-    app_link = get('APP_LINK', 'https://github.com/markushi/android-ui/raw/master/example.apk')
+    app_link = get('APP_LINK', '')
     app_pkg = get('APP_PKG', 'at.markushi.reveal')
     app_activity = get('APP_ACTIVITY', '.MyActivity')
     appium_host = get('APPIUM_HOST', 'http://localhost:4723/wd/hub')
-    implicit_wait = int(get('IMPLICIT_WAIT', 10))
 
     capabilities = {
         'platformName': platform_name,
         'platformVersion': platform_version,
-        'app': app_link,
         'appPackage': app_pkg,
         'appActivity': app_activity
     }
+
+    if app_link:
+        capabilities['app'] = app_link
+
     driver = webdriver.Remote(appium_host, capabilities)
-    driver.implicitly_wait(implicit_wait)
 
     yield driver
 
     if request.node.rep_call.failed:
-        # Make the screen-shot if test failed:
-
+        # Make the screenshot if test failed:
         try:
-            driver.save_screenshot('screenshots/' + str(uuid4()) + '.png')
+            driver.save_screenshot('screenshots/failed_' + str(uuid4()) + '.png')
         except Exception as e:
             print(e)   # print exception, but do not raise it
 

@@ -1,2 +1,4 @@
 pytest
 Appium-Python-Client
+scikit-image
+opencv-python-headless

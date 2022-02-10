@@ -1,40 +1,44 @@
 #!/usr/bin/python3
 # -*- encoding=utf8 -*-
 
+import os
+import logging
 
-class Element():
-    _locator = ('', '')
-    _driver = None
-    _wait_after_click = False
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
+
+
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
+
+
+class Element:
+    locator = None
+    driver = None
+    wait_after_click = False
 
     def __init__(self, locator_type, locator_str):
-        self._locator = (locator_type, locator_str)
+        self.locator = {locator_type: locator_str}
 
-    def find(self):
-        result = None
+    def find(self, timeout: float = 15.0, required=True):
+        """ Find element. """
+
+        element = None
+
+        locator_type, locator_str = self._parse_locator()
 
         try:
-            if self._locator[0] == 'id':
-                locator = self._locator[1]
+            element = WebDriverWait(self.driver, timeout).until(
+                EC.presence_of_element_located((locator_type, locator_str))
+            )
+        except:
+            msg = f'Element {locator_type} {locator_str} not found'
+            logger.debug(msg)
 
-                # To make elements locators smaller:
-                if ':' not in self._locator[1]:
-                    app_name = self._driver.desired_capabilities['appPackage']
-                    locator = '{0}:id/' + self._locator[1]
-                    locator = locator.format(app_name)
+        if required and not element:
+            raise Exception('Element not found', self.locator)
 
-                result = self._driver.find_element_by_id(locator)
-
-            else:
-                result = self._driver.find_element_by_xpath(self._locator[1])
-        except Exception as e:
-            print('Can not find element', self._locator)
-            print(e)
-
-        return result
-
-    def clear(self):
-        pass
+        return element
 
     def click(self):
         element = self.find()
@@ -48,62 +52,55 @@ class Element():
         if element:
             element.send_keys(value)
 
-    def _set_value(self, driver, value, clear=True):
-        """ Set value to the input element. """
+    def is_present(self, timeout=10.0):
+        """ Check is element exits. """
 
-        element = self.find()
+        element = self.find(timeout=timeout, required=False)
+        return bool(element)
 
-        if clear:
-            element.clear()
+    def _parse_locator(self):
+        """ Modify locator based on the platform and attributes. """
 
-        element.send_keys(value)
+        platform_name = self.driver.desired_capabilities['platformName']
+        platform_name = platform_name.lower()
 
+        locator_type, locator_str = '', ''
 
-class ManyElement(Element):
+        if platform_name == 'android':
+            if 'id' in self.locator:
+                locator_type = 'id'
+                locator_str = self.locator['id']
+                if ':' not in locator_str:
+                    app_name = os.environ['APP_PACKAGE']
+                    locator_str = f'{app_name}:id/{locator_str}'
 
-    def __getitem__(self, item):
-        """ Get list of elements and try to return required element. """
+            elif 'text' in self.locator:
+                locator_type = 'xpath'
+                locator_text = self.locator['text']
+                locator_str = f'//*[@text="{locator_text}"]'
 
-        elements = self.find()
-        return elements[item]
+            elif 'contains_text' in self.locator:
+                locator_type = 'xpath'
+                xpath = '//*[contains(@text, "{0}")]'
+                locator_str = xpath.format(self.locator['contains_text'])
 
-    def find(self):
-        result = None
+            elif 'xpath' in self.locator:
+                locator_type = 'xpath'
+                locator_str = self.locator['xpath']
 
-        try:
-            if self._locator[0] == 'id':
-                locator = self._locator[1]
+            elif 'accessibility id' in self.locator:
+                locator_type = 'accessibility id'
+                locator_str = self.locator['accessibility id']
 
-                # To make elements locators smaller:
-                if ':' not in self._locator[1]:
-                    app_name = self._driver.desired_capabilities['appPackage']
-                    locator = '{0}:id/' + self._locator[1]
-                    locator = locator.format(app_name)
+            elif 'content_desc' in self.locator:
+                locator_type = 'xpath'
+                xpath = '//*[@content-desc="{0}"]'
+                locator_str = xpath.format(self.locator['content_desc'])
 
-                result = self._driver.find_elements_by_id(locator)
+        elif platform_name == 'ios':
+            if 'label' in self.locator:
+                locator_type = 'xpath'
+                locator_str = self.locator['label']
+                locator_str = f'//*[@label="{locator_str}"]'
 
-            else:
-                result = self._driver.find_element_by_xpath(self._locator[1])
-        except Exception as e:
-            print('Can not find element', self._locator)
-            print(e)
-
-        return result
-
-    def clear(self):
-        """ Note: this action is not applicable for the list of elements. """
-        raise NotImplemented('This action is not applicable for the list of elements')
-
-    def click(self):
-        """ Note: this action is not applicable for the list of elements. """
-        raise NotImplemented('This action is not applicable for the list of elements')
-
-    def send_keys(self, value):
-        """ Note: this action is not applicable for the list of elements. """
-        raise NotImplemented('This action is not applicable for the list of elements')
-
-    def count(self):
-        """ Get count of elements. """
-
-        elements = self.find()
-        return len(elements)
+        return locator_type, locator_str
